@@ -26,11 +26,14 @@ class TradingStrategyOptimizer:
         n_layers = trial.suggest_int('n_layers', 1, 3)
         n_units = trial.suggest_int('n_units', 50, 200)
         lr = trial.suggest_loguniform('lr', 1e-4, 1e-2)
+        activation_func = trial.suggest_categorical('activation', ['relu', 'leaky_relu'])
+
+        
         
         model = tf.keras.Sequential()
-        model.add(tf.keras.layers.Dense(n_units, input_dim=X_train.shape[1], activation='relu'))
+        model.add(tf.keras.layers.Dense(n_units, input_dim=X_train.shape[1], activation=activation_func))
         for _ in range(n_layers - 1):
-            model.add(tf.keras.layers.Dense(n_units, activation='relu'))
+            model.add(tf.keras.layers.Dense(n_units, activation=activation_func))
         model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
         
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr), 
@@ -51,11 +54,12 @@ class TradingStrategyOptimizer:
         n_layers = best_params['n_layers']
         n_units = best_params['n_units']
         lr = best_params['lr']
+        activation_func = best_params['activation']
         
         model = tf.keras.Sequential()
-        model.add(tf.keras.layers.Dense(n_units, input_dim=X_train.shape[1], activation='relu'))
+        model.add(tf.keras.layers.Dense(n_units, input_dim=X_train.shape[1], activation=activation_func))
         for _ in range(n_layers - 1):
-            model.add(tf.keras.layers.Dense(n_units, activation='relu'))
+            model.add(tf.keras.layers.Dense(n_units, activation=activation_func))
         model.add(tf.keras.layers.Dense(1, activation='sigmoid'))
         
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=lr), 
@@ -91,10 +95,7 @@ class TradingStrategyOptimizer:
         
         return pd.DataFrame({'Y_BUY_PRED': y_pred_buy.flatten(), 'Y_SELL_PRED': y_pred_sell.flatten()})
     
-# if __name__ == '__main__':
-#     optimizer = TradingStrategyOptimizer('/home/rodo/code/proyecto_4/004_DL/data/close_data_buy_5.csv', '/home/rodo/code/proyecto_4/004_DL/data/close_data_sell_5.csv')
-#     df = optimizer.run()
-#     print(df)
+
     
 def clean_ds(df):
     df = df.copy()
@@ -116,24 +117,11 @@ def clean_ds(df):
 
     return df
 
-# df1 = pd.read_csv("data/aapl_5m_train.csv")
-# df_5min = clean_ds(df1)
 
-# close_data = df_5min[['Timestamp','Close', 'X_t-1', 'X_t-2', 'X_t-3', 'X_t-4' ,'X_t-5','RSI', 'Y_BUY']]
-# close_data = close_data.dropna()
-
-# df_indexed = df.reset_index()
-# close_data_indexed = close_data.reset_index()
-
-# close_data_updated = close_data_indexed.join(df_indexed[['Y_BUY_PRED', 'Y_SELL_PRED']])
-
-
-
-# closes_5min = close_data_updated[['Timestamp', 'Close','Y_BUY_PRED', 'Y_SELL_PRED']]
 
 class Operation:
     def __init__(self, operation_type, bought_at, timestamp, n_shares,stop_loss, take_profit):
-        self.df = self.df
+        
         self.operation_type = operation_type
         self.bought_at = bought_at
         self.timestamp = timestamp
@@ -143,7 +131,7 @@ class Operation:
         self.take_profit = take_profit
         
 class dnn_strategy:
-    def __init__(self, df, cash, active_operations, com, n_shares, stop_loss, take_profit):
+    def __init__(self,df ,cash, active_operations, com, n_shares, stop_loss, take_profit):
         self.df = df
         self.cash = cash
         self.active_operations = active_operations
@@ -180,84 +168,21 @@ class dnn_strategy:
                 n_shares = self.n_shares
                 stop_loss = row.Close * (1 - self.stop_loss)
                 take_profit = row.Close * (1 + self.take_profit)
-                self.active_operations.append(Operation(self.df,'Long', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
-                self.cash += row.Close * n_shares * (1 + self.com)
+                self.active_operations.append(Operation('Long', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
+                self.cash -= row.Close * n_shares * (1 + self.com)
             elif row.Y_SELL_PRED:
                 n_shares = self.n_shares
                 stop_loss = row.Close * (1 + self.stop_loss)
                 take_profit = row.Close * (1 - self.take_profit)
-                self.active_operations.append(Operation(self.df,'Short', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
-                self.cash -= row.Close * n_shares * (1 - self.com)
+                self.active_operations.append(Operation('Short', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
+                self.cash += row.Close * n_shares * (1 - self.com)
                 
             
-            total_value = len(self.active_operations) * row.Close * self.n_shares
-            self.strategy_value.append(self.cash + total_value)
-            return self.strategy_value[-1] 
+        total_value = len(self.active_operations) * row.Close * self.n_shares
+        self.strategy_value.append(self.cash + total_value)
+        return self.strategy_value[-1] 
         
 
-cash = 1_000_000
-active_operations = []
-com = 0.00125  # comision en GBM
-strategy_value = [1_000_000]
-
-best_global_strategy = {'name': None, 'value': float('-inf')}
-
-def optimize(trial,):
-    # Definición de los parámetros a optimizar
-    stop_loss = trial.suggest_float('stop_loss', 0.00250, 0.05)
-    take_profit = trial.suggest_float('take_profit', 0.00250, 0.05)
-    n_shares = trial.suggest_int('n_shares', 5, 200)
-    
-    dnn_strat = dnn_strategy(
-        df=df,  # df
-        cash=cash,  # saldo inicial
-        active_operations=[],
-        com=com,  # comisión GBM
-        n_shares=n_shares,
-        stop_loss=stop_loss,
-        take_profit=take_profit
-    )
-
-    dnn_strat.run_strategy()
-    
-    strategy_values = {
-        'dnn_strategy': dnn_strat.run_strategy()
-    }
-    
-    best_strategy_name = max(strategy_values, key=strategy_values.get)
-    best_strategy_value = strategy_values[best_strategy_name]
-
-    if best_strategy_value > best_global_strategy['value']:
-        best_global_strategy['name'] = best_strategy_name
-        best_global_strategy['value'] = best_strategy_value
-
-    
-    # Retorna el valor de la mejor estrategia
-    return best_strategy_value
-
-# Inicializar y ejecutar la optimización
-# study = optuna.create_study(direction='maximize')
-# study.optimize(optimize, n_trials=1000, n_jobs=-1)
-
-# # Los mejores parámetros encontrados en el mejor trial
-# best_params = study.best_trial.params
-# best_value = study.best_trial.value
-
-# # Comparar con el mejor valor global previamente encontrado y el nombre de la estrategia
-# best_strategy_name = best_global_strategy['name']
-# best_strategy_value = best_global_strategy['value']
-
-# # Imprimir los resultados, incluido el nombre de la mejor estrategia global y su valor
-# print(f"Best buy overall strategy: {best_strategy_name} with value: {best_strategy_value}")
-# print("Best buy strategy parameters:", best_params)
-
-
-# #plot the strategy value over time 
-# plt.plot(strategy_value)
-# plt.title('DNN Strategy Value Over Time')
-# plt.xlabel('Time')
-# plt.ylabel('Strategy Value')
-# plt.show()
 
 
 
