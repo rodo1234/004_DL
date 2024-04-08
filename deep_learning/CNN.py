@@ -111,7 +111,7 @@ class TradingStrategyOptimizerCNN:
 
         return pd.DataFrame({'Y_BUY_PRED': y_pred_buy.flatten(), 'Y_SELL_PRED': y_pred_sell.flatten()})
 
-def clean_ds(df):
+def clean_ds_CNN(df):
     df = df.copy()
     for i in range(1, 6):
         df[f'X_t-{i}'] = df['Close'].shift(i)
