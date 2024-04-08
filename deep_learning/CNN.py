@@ -114,7 +114,7 @@ class TradingStrategyOptimizerCNN:
 def clean_ds(df):
     df = df.copy()
     for i in range(1, 6):
-    df[f'X_t-{i}'] = df['Close'].shift(i)
+        df[f'X_t-{i}'] = df['Close'].shift(i)
 
     df['Pt_5'] = df['Close'].shift(-5)
 
@@ -133,63 +133,63 @@ def clean_ds(df):
 
 class Operation:
     def __init__(self, operation_type, bought_at, timestamp, n_shares, stop_loss, take_profit):
-    self.operation_type = operation_type
-    self.bought_at = bought_at
-    self.timestamp = timestamp
-    self.n_shares = n_shares
-    # self.sold_at = None
-    self.stop_loss = stop_loss
-    self.take_profit = take_profit
+        self.operation_type = operation_type
+        self.bought_at = bought_at
+        self.timestamp = timestamp
+        self.n_shares = n_shares
+        # self.sold_at = None
+        self.stop_loss = stop_loss
+        self.take_profit = take_profit
 
 class dnn_strategy:
     def __init__(self, df, cash, active_operations, com, n_shares, stop_loss, take_profit):
-    self.df = df
-    self.cash = cash
-    self.active_operations = active_operations
-    self.com = com
-    self.n_shares = n_shares
-    self.stop_loss = stop_loss
-    self.take_profit = take_profit
-    self.strategy_value = []
+        self.df = df
+        self.cash = cash
+        self.active_operations = active_operations
+        self.com = com
+        self.n_shares = n_shares
+        self.stop_loss = stop_loss
+        self.take_profit = take_profit
+        self.strategy_value = []
 
-def run_strategy(self):
-    for i, row in self.df.iterrows():
+    def run_strategy(self):
+        for i, row in self.df.iterrows():
 
-        # Close Operations
-        temp_operations = []
-        for op in self.active_operations:
-            if op.operation_type == 'Long':
-                if op.stop_loss > row.Close:
-                    self.cash += row.Close * op.n_shares * (1 - self.com)
-                elif op.take_profit < row.Close:
-                    self.cash += row.Close * op.n_shares * (1 - self.com)
-                else:
-                    temp_operations.append(op)
-            elif op.operation_type == 'Short':
-                if op.stop_loss < row.Close:
-                    self.cash -= row.Close * op.n_shares * (1 + self.com)
-                elif op.take_profit > row.Close:
-                    self.cash -= row.Close * op.n_shares * (1 + self.com)
-                else:
-                    temp_operations.append(op)
-        self.active_operations = temp_operations
+            # Close Operations
+            temp_operations = []
+            for op in self.active_operations:
+                if op.operation_type == 'Long':
+                    if op.stop_loss > row.Close:
+                        self.cash += row.Close * op.n_shares * (1 - self.com)
+                    elif op.take_profit < row.Close:
+                        self.cash += row.Close * op.n_shares * (1 - self.com)
+                    else:
+                        temp_operations.append(op)
+                elif op.operation_type == 'Short':
+                    if op.stop_loss < row.Close:
+                        self.cash -= row.Close * op.n_shares * (1 + self.com)
+                    elif op.take_profit > row.Close:
+                        self.cash -= row.Close * op.n_shares * (1 + self.com)
+                    else:
+                        temp_operations.append(op)
+            self.active_operations = temp_operations
 
-        # Open Operations
-        if row.Y_BUY_PRED:
-            n_shares = self.n_shares
-            stop_loss = row.Close * (1 - self.stop_loss)
-            take_profit = row.Close * (1 + self.take_profit)
-            self.active_operations.append(
-                Operation('Long', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
-            self.cash -= row.Close * n_shares * (1 + self.com)
-        elif row.Y_SELL_PRED:
-            n_shares = self.n_shares
-            stop_loss = row.Close * (1 + self.stop_loss)
-            take_profit = row.Close * (1 - self.take_profit)
-            self.active_operations.append(
-                Operation('Short', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
-            self.cash += row.Close * n_shares * (1 - self.com)
+            # Open Operations
+            if row.Y_BUY_PRED:
+                n_shares = self.n_shares
+                stop_loss = row.Close * (1 - self.stop_loss)
+                take_profit = row.Close * (1 + self.take_profit)
+                self.active_operations.append(
+                    Operation('Long', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
+                self.cash -= row.Close * n_shares * (1 + self.com)
+            elif row.Y_SELL_PRED:
+                n_shares = self.n_shares
+                stop_loss = row.Close * (1 + self.stop_loss)
+                take_profit = row.Close * (1 - self.take_profit)
+                self.active_operations.append(
+                    Operation('Short', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
+                self.cash += row.Close * n_shares * (1 - self.com)
 
-    total_value = len(self.active_operations) * row.Close * self.n_shares
-    self.strategy_value.append(self.cash + total_value)
-    return self.strategy_value[-1]
+        total_value = len(self.active_operations) * row.Close * self.n_shares
+        self.strategy_value.append(self.cash + total_value)
+        return self.strategy_value[-1]
