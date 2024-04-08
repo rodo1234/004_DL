@@ -4,7 +4,7 @@ import tensorflow as tf
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
-class TradingStrategyOptimizer:
+class TradingStrategyOptimizerRNN:
     def _init_(self, buy_data_path, sell_data_path):
         self.buy_data_path = buy_data_path
         self.sell_data_path = sell_data_path
