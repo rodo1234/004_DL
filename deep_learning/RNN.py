@@ -112,7 +112,7 @@ class Operation:
         self.stop_loss = stop_loss
         self.take_profit = take_profit
 
-class dnn_strategy:
+class dnn_strategy_RNN:
     def __init__(self, df, cash, active_operations, com, n_shares, stop_loss, take_profit):
         self.df = df
         self.cash = cash
