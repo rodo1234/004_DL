@@ -4,8 +4,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 import optuna
+import ta
 
-class TradingStrategyOptimizerCNN:
+class TradingStrategyOptimizer_CNN:
     def __init__(self, buy_data_path, sell_data_path):
         self.buy_data_path = buy_data_path
         self.sell_data_path = sell_data_path
@@ -26,13 +27,13 @@ class TradingStrategyOptimizerCNN:
         n_layers = trial.suggest_int('n_layers', 1, 3)
         n_filters = trial.suggest_int('n_filters', 32, 128)
         kernel_size = trial.suggest_int('kernel_size', 2, 5)
-        pool_size = trial.suggest_int('pool_size', 2, 3)
+        pool_size = trial.suggest_int('pool_size', 1, 2)
         strides = trial.suggest_int('strides', 1, 2)
         padding = trial.suggest_categorical('padding', ['valid', 'same'])
 
         # General neural network hyperparameters
         n_units = trial.suggest_int('n_units', 50, 200)
-        activation = trial.suggest_categorical('activation', ['relu', 'tanh', 'sigmoid'])
+        activation = trial.suggest_categorical('activation', ['relu', 'tanh', 'leaky_relu'])
         lr = trial.suggest_loguniform('lr', 1e-4, 1e-2)
 
         model = tf.keras.Sequential()
@@ -62,9 +63,9 @@ class TradingStrategyOptimizerCNN:
         n_layers = best_params['n_layers']
         n_filters = best_params['n_filters']
         kernel_size = best_params['kernel_size']
-        pool_size = best_params.get('pool_size', 2)
-        strides = best_params.get('strides', 1)
-        padding = best_params.get('padding', 'valid')
+        pool_size = best_params.get('pool_size')
+        strides = best_params.get('strides')
+        padding = best_params.get('padding')
         n_units = best_params['n_units']
         activation = best_params['activation']
         lr = best_params['lr']
@@ -86,15 +87,15 @@ class TradingStrategyOptimizerCNN:
         model.fit(X_train, y_train, epochs=10, verbose=2)
         return model
 
-    def run(self):
+    def run_cnn(self):
         X_train_buy, X_val_buy, y_train_buy, y_val_buy = self.load_and_preprocess_data(self.buy_data_path)
         X_train_sell, X_val_sell, y_train_sell, y_val_sell = self.load_and_preprocess_data(self.sell_data_path)
 
-        best_params_buy = self.optimize_dnn(X_train_buy, y_train_buy, X_val_buy, y_val_buy)
-        best_params_sell = self.optimize_dnn(X_train_sell, y_train_sell, X_val_sell, y_val_sell)
+        best_params_buy = self.optimize_cnn(X_train_buy, y_train_buy, X_val_buy, y_val_buy)
+        best_params_sell = self.optimize_cnn(X_train_sell, y_train_sell, X_val_sell, y_val_sell)
 
-        model_buy = self.build_and_train_model(best_params_buy, X_train_buy, y_train_buy)
-        model_sell = self.build_and_train_model(best_params_sell, X_train_sell, y_train_sell)
+        model_buy_cnn = self.build_and_train_cnn_model(best_params_buy, X_train_buy, y_train_buy)
+        model_sell_cnn = self.build_and_train_cnn_model(best_params_sell, X_train_sell, y_train_sell)
 
         datos = pd.read_csv(self.buy_data_path)
         y = datos.pop('Y_BUY' if 'buy' in self.buy_data_path else 'Y_SELL').values
@@ -102,14 +103,18 @@ class TradingStrategyOptimizerCNN:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
-        y_pred_buy = model_buy.predict(X_scaled)
-        y_pred_sell = model_sell.predict(X_scaled)
+        y_pred_buy = model_buy_cnn.predict(X_scaled)
+        y_pred_sell = model_sell_cnn.predict(X_scaled)
+        
+        #Guardar el modelo
+        model_buy_cnn.save('model_buy_cnn.keras')
+        model_sell_cnn.save('model_sell_cnn.keras')
 
         # covertir a booleanos
         y_pred_buy = y_pred_buy > 0.5
         y_pred_sell = y_pred_sell > 0.5
 
-        return pd.DataFrame({'Y_BUY_PRED': y_pred_buy.flatten(), 'Y_SELL_PRED': y_pred_sell.flatten()})
+        return pd.DataFrame({'Y_BUY_PRED_CNN': y_pred_buy.flatten(), 'Y_SELL_PRED_CNN': y_pred_sell.flatten()}), model_buy_cnn, model_sell_cnn
 
 def clean_ds_CNN(df):
     df = df.copy()
@@ -141,7 +146,7 @@ class Operation:
         self.stop_loss = stop_loss
         self.take_profit = take_profit
 
-class dnn_strategy_CNN:
+class cnn_strategy:
     def __init__(self, df, cash, active_operations, com, n_shares, stop_loss, take_profit):
         self.df = df
         self.cash = cash
@@ -152,7 +157,7 @@ class dnn_strategy_CNN:
         self.take_profit = take_profit
         self.strategy_value = []
 
-    def run_strategy(self):
+    def run_strategy_cnn(self):
         for i, row in self.df.iterrows():
 
             # Close Operations
@@ -175,14 +180,14 @@ class dnn_strategy_CNN:
             self.active_operations = temp_operations
 
             # Open Operations
-            if row.Y_BUY_PRED:
+            if row.Y_BUY_PRED_CNN:
                 n_shares = self.n_shares
                 stop_loss = row.Close * (1 - self.stop_loss)
                 take_profit = row.Close * (1 + self.take_profit)
                 self.active_operations.append(
                     Operation('Long', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
                 self.cash -= row.Close * n_shares * (1 + self.com)
-            elif row.Y_SELL_PRED:
+            elif row.Y_SELL_PRED_CNN:
                 n_shares = self.n_shares
                 stop_loss = row.Close * (1 + self.stop_loss)
                 take_profit = row.Close * (1 - self.take_profit)
@@ -190,6 +195,6 @@ class dnn_strategy_CNN:
                     Operation('Short', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
                 self.cash += row.Close * n_shares * (1 - self.com)
 
-        total_value = len(self.active_operations) * row.Close * self.n_shares
-        self.strategy_value.append(self.cash + total_value)
+            total_value = len(self.active_operations) * row.Close * self.n_shares
+            self.strategy_value.append(self.cash + total_value)
         return self.strategy_value[-1]

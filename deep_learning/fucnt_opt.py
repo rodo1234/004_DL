@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 import tensorflow as tf
 import ta
 
-class TradingStrategyOptimizer:
+class TradingStrategyOptimizer_DNN:
     def __init__(self, buy_data_path, sell_data_path):
         self.buy_data_path = buy_data_path
         self.sell_data_path = sell_data_path
@@ -26,7 +26,7 @@ class TradingStrategyOptimizer:
         n_layers = trial.suggest_int('n_layers', 1, 3)
         n_units = trial.suggest_int('n_units', 50, 200)
         lr = trial.suggest_loguniform('lr', 1e-4, 1e-2)
-        activation_func = trial.suggest_categorical('activation', ['relu', 'leaky_relu'])
+        activation_func = trial.suggest_categorical('activation', ['relu'])
 
         
         
@@ -69,15 +69,15 @@ class TradingStrategyOptimizer:
         model.fit(X_train, y_train, epochs=10, verbose=False)
         return model
     
-    def run(self):
+    def run_dnn(self):
         X_train_buy, X_val_buy, y_train_buy, y_val_buy = self.load_and_preprocess_data(self.buy_data_path)
         X_train_sell, X_val_sell, y_train_sell, y_val_sell = self.load_and_preprocess_data(self.sell_data_path)
         
         best_params_buy = self.optimize_dnn(X_train_buy, y_train_buy, X_val_buy, y_val_buy)
         best_params_sell = self.optimize_dnn(X_train_sell, y_train_sell, X_val_sell, y_val_sell)
         
-        model_buy = self.build_and_train_model(best_params_buy, X_train_buy, y_train_buy)
-        model_sell = self.build_and_train_model(best_params_sell, X_train_sell, y_train_sell)
+        model_buy_dnn = self.build_and_train_model(best_params_buy, X_train_buy, y_train_buy)
+        model_sell_dnn = self.build_and_train_model(best_params_sell, X_train_sell, y_train_sell)
         
         datos = pd.read_csv(self.buy_data_path)
         y = datos.pop('Y_BUY' if 'buy' in self.buy_data_path else 'Y_SELL').values
@@ -85,15 +85,21 @@ class TradingStrategyOptimizer:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
         
-        y_pred_buy = model_buy.predict(X_scaled)
-        y_pred_sell = model_sell.predict(X_scaled)
+        y_pred_buy = model_buy_dnn.predict(X_scaled)
+        y_pred_sell = model_sell_dnn.predict(X_scaled)
+        
+        #Guardar el modelo
+        model_buy_dnn.save('model_buy_dnn.keras')
+        model_sell_dnn.save('model_sell_dnn.keras')
+        
+        
         
         # covertir a booleanos
         y_pred_buy = y_pred_buy > 0.5
         y_pred_sell = y_pred_sell > 0.5
         
         
-        return pd.DataFrame({'Y_BUY_PRED': y_pred_buy.flatten(), 'Y_SELL_PRED': y_pred_sell.flatten()})
+        return pd.DataFrame({'Y_BUY_PRED_DNN': y_pred_buy.flatten(), 'Y_SELL_PRED_DNN': y_pred_sell.flatten()}), model_buy_dnn, model_sell_dnn
     
 
     
@@ -141,7 +147,7 @@ class dnn_strategy:
         self.take_profit = take_profit
         self.strategy_value = []
         
-    def run_strategy(self):
+    def run_strategy_dnn(self):
         for i, row in self.df.iterrows():
 
             # Close Operations
@@ -164,13 +170,13 @@ class dnn_strategy:
             self.active_operations = temp_operations
             
             # Open Operations
-            if row.Y_BUY_PRED:
+            if row.Y_BUY_PRED_DNN:
                 n_shares = self.n_shares
                 stop_loss = row.Close * (1 - self.stop_loss)
                 take_profit = row.Close * (1 + self.take_profit)
                 self.active_operations.append(Operation('Long', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
                 self.cash -= row.Close * n_shares * (1 + self.com)
-            elif row.Y_SELL_PRED:
+            elif row.Y_SELL_PRED_DNN:
                 n_shares = self.n_shares
                 stop_loss = row.Close * (1 + self.stop_loss)
                 take_profit = row.Close * (1 - self.take_profit)
@@ -178,8 +184,8 @@ class dnn_strategy:
                 self.cash += row.Close * n_shares * (1 - self.com)
                 
             
-        total_value = len(self.active_operations) * row.Close * self.n_shares
-        self.strategy_value.append(self.cash + total_value)
+            total_value = len(self.active_operations) * row.Close * self.n_shares
+            self.strategy_value.append(self.cash + total_value)
         return self.strategy_value[-1] 
         
 
