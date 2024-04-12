@@ -25,11 +25,9 @@ En este proyecto nos concentramos en la aplicación de tres potentes modelos de 
 
 ### Parámetros por operación
 
-1. Stop Loss Long: Este parámetro establece el nivel de precio al cual se activará una orden de venta para cerrar una posición larga y limitar las pérdidas. (0.01, 0.95)
-2. Take Profit Long: Especifica el nivel de precio al cual se activará una orden de venta para cerrar una posición larga y asegurar las ganancias. (0.01, 0.95)
-3. Stop Loss Short: Determina el nivel de precio al cual se activará una orden de compra para cerrar una posición corta y limitar las pérdidas. (0.01, 0.95)
-4. Take Profit Short: Indica el nivel de precio al cual se activará una orden de compra para cerrar una posición corta y asegurar las ganancias. (0.01, 0.95)
-5. Número de Acciones (n_shares): Este parámetro define la cantidad de acciones a comprar o vender en cada operación. (10, 100)
+1. Stop Loss: Este parámetro establece el nivel de precio al cual se activará una orden de venta para cerrar una posición larga y limitar las pérdidas. (0.00250,0.05)
+2. Take Profit: Especifica el nivel de precio al cual se activará una orden de venta para cerrar una posición larga y asegurar las ganancias. (0.00250, 0.05)
+2. Número de Acciones (n_shares): Este parámetro define la cantidad de acciones a comprar o vender en cada operación. (5, 200)
 
 ### Parámetros por función:
 
