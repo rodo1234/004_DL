@@ -24,7 +24,7 @@ class TradingStrategyOptimizer_CNN:
 
     def objective(self, trial, X_train, y_train, X_val, y_val):
         # CNN-specific hyperparameters
-        n_layers = trial.suggest_int('n_layers', 1, 3)
+        n_layers = trial.suggest_int('n_layers', 1, 5)
         n_filters = trial.suggest_int('n_filters', 32, 128)
         kernel_size = trial.suggest_int('kernel_size', 2, 5)
         pool_size = trial.suggest_int('pool_size', 1, 2)
@@ -57,7 +57,7 @@ class TradingStrategyOptimizer_CNN:
     def optimize_cnn(self, X_train, y_train, X_val, y_val):
         study = optuna.create_study(direction='maximize')
         func = lambda trial: self.objective(trial, X_train, y_train, X_val, y_val)
-        study.optimize(func, n_trials=10)
+        study.optimize(func, n_trials=20)
         return study.best_trial.params
     def build_and_train_cnn_model(self, best_params, X_train, y_train):
         n_layers = best_params['n_layers']
@@ -195,6 +195,6 @@ class cnn_strategy:
                     Operation('Short', row.Close, row.Timestamp, n_shares, stop_loss, take_profit))
                 self.cash += row.Close * n_shares * (1 - self.com)
 
-            total_value = len(self.active_operations) * row.Close * self.n_shares
+            total_value = len(self.active_operations) * row.Close 
             self.strategy_value.append(self.cash + total_value)
         return self.strategy_value[-1]
